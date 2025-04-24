@@ -57,7 +57,8 @@ class Signal:
     def remove_dc(self):
         X_f = sp_fft.fft(self.val)
         X_f[0] = 0
-        return Signal(self.t, sp_fft.ifft(X_f).real)
+        self.val = sp_fft.ifft(X_f).real
+        return self
     
 
     def low_pass_filter(self, cutoff_freq, order=4):
@@ -66,9 +67,9 @@ class Signal:
         normal_cutoff = cutoff_freq / nyquist
         
         b, a = signal.butter(order, normal_cutoff, btype='low', analog=False)
-        filtered_signal = signal.filtfilt(b, a, self.val)
+        self.val = signal.filtfilt(b, a, self.val)
         
-        return Signal(self.t, filtered_signal)
+        return self
     
 
     def notch_filter(self, freq=50, Q=30, freq_range=2, num_freqs = 1):
@@ -79,13 +80,12 @@ class Signal:
         sorted_indices = np.argsort(magnitudes[freq_mask])[-num_freqs:]
         strongest_freqs = freqs[freq_mask][sorted_indices]
 
-        filtered_signal = self.val
         for f in strongest_freqs:
             w0 = f / (fs / 2)
             b, a = signal.iirnotch(w0, Q)
-            filtered_signal = signal.filtfilt(b, a, filtered_signal)
+            self.val = signal.filtfilt(b, a, self.val)
         
-        return Signal(self.t, filtered_signal)
+        return self
     
 
     def comb_filter(self, fund_freq=50, comb_teeth=12):
@@ -147,12 +147,12 @@ class EMG:
     def __init__(
         self,
         movement : str,
-        version : str = 'new',
         trial : int = 1,
+        version : str = 'new',
         filtered : bool = True
     ):
         self.movement = movement
-        t, ch0, ch1 = get_emg_data(movement, new_old=version, trial=trial)
+        t, ch0, ch1 = get_emg_data(movement, version=version, trial=trial)
 
         self.ch0 = Signal(t, ch0)
         self.ch1 = Signal(t, ch1)
@@ -164,6 +164,7 @@ class EMG:
     def filter_EMG(self, **kwargs):
         self.ch0 = self.ch0.comb_filter(**kwargs).low_pass_filter(500)
         self.ch1 = self.ch1.comb_filter(**kwargs).low_pass_filter(500)
+        return self
 
 
     def __array__(self):
@@ -178,8 +179,8 @@ class EMG:
         return self
 
 
-    # Turns each movement into a vector in the frequency domain
     def vectorise_movement(self, f_range=(0,500)):
+        """Turns each movement into a vector in the frequency domain"""
         _, fft0 = self.ch0.get_fft(spectrum='half', mode='abs', f_range=f_range)
         _, fft1 = self.ch1.get_fft(spectrum='half', mode='abs', f_range=f_range)
         return np.concatenate((fft0, fft1))
@@ -198,7 +199,7 @@ class EMG:
 
         for g in gestures:
             dp = dot_product(test, g.gesture_vec, normalised=normalised)
-            norm = get_dist(test, g.gesture_vec, normalised=normalised)
+            norm = get_dist(test, g.gesture_vec, normalised=False)
             dot_products.append(dp)
             euclidean_distances.append(1/norm)
 
@@ -269,6 +270,9 @@ class EMG:
         if show:
             plt.show()
 
+    def show_new_EMG(self):
+        self.resample_EMG().filter_EMG().plot_channels()
+
 
 
 
@@ -308,5 +312,4 @@ class Gesture:
                     print(f"Skipped {self.name}{i}. {e}")
                 break
         return get_average(*m_vectors)
-
 

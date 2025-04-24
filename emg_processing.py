@@ -1,11 +1,12 @@
 from emg_classes import *
 from emg_functions import get_new_filepath
 from emg_functions import movements, repetitions, global_fs
+from functools import cache
 
 
-def resample_readings(trial, fs=global_fs, print_verification=True, gestures=movements):
+def resample_readings(trial, fs=global_fs, print_verification=True, gestures=movements, reps=repetitions):
     for m in gestures:
-        for i in repetitions:
+        for i in reps:
             new_fpath = get_new_filepath(f'{m}{i}', trial=trial)
 
             try:
@@ -43,28 +44,30 @@ def test_movement_and_plot(movement, trial, gest_vec, normalise=True):
             other_vec = g.gesture_vec
 
     print(result)
-    plt.plot(other_vec, label=f'{result}')
-    plt.plot(test_emg.vectorise_movement(), label='test')
+    plt.plot(other_vec, label=f'{result}', linewidth=0.7)
+    plt.plot(test_emg.vectorise_movement(), label='test', linewidth=0.7)
     plt.legend()
     plt.show()
 
 
 def show_classifications(trial, gest_list):
-    for m in movements[0:6]:
+    gestures = [g.name for g in gest_list]
+    for g in gestures:
         for i in range(5):
             try:
-                emg = EMG(f'{m}{i}', trial=trial)
-                print(f"Classified {m}{i} as {emg.classify_gesture(gest_list, normalised=True)}.")
+                emg = EMG(f'{g}{i}', trial=trial)
+                print(f"Classified {g}{i} as {emg.classify_gesture(gest_list, normalised=True)}.")
             except Exception:
                 pass
 
 
-def plot_gesture_spectrum(trial, gestures=movements[0:6], name=None, show=True):
+def plot_gesture_spectrum(trial, gestures=movements[0:6], name=None, show=True, **kwargs):
     gest_list = get_gesture_vectors(trial, *gestures, readings=4)
     plt.figure(name)
     for g in gest_list:
-        g.plot(False, label=g.name)
+        g.plot(show=False, label=g.name, **kwargs)
         plt.legend()
+    plt.tight_layout()
     if show:
         plt.show()
 
@@ -75,41 +78,72 @@ def test_gesture(testfile_name, trial, gest_list):
 
     print(test.classify_gesture(gest_list))
 
-plot_gesture_spectrum(4)
 
-# plt.subplot(2,1,1)
-# plt.title('Unfiltered')
-# EMG('fist_dynamic', filtered=False).plot_channel(0, show=False, linewidth=0.7, color='b')
-# plt.subplot(2,1,2)
-# plt.title('Filtered')
-# EMG('fist_dynamic').plot_channel(0, show=False, linewidth=0.7, color='b')
+def calculate_accuracy(trial, gestures=movements[1:6], mode='calc', total_readings=5, split=0.4, gest_list=None):
+    """
+    This function calculates the accuracy of the model for a given trial.
+    It can either be given a set of vectorised gestures to classify on,
+    or it will take the given data and split it.
 
-# plt.tight_layout()
-# plt.show()
+    Parameters
+    ----------
+    trial : int
+        Trial number.
+    gestures : list[str]
+        List of names of gestures to be classified.
+    mode : str
+        Mode of classification. Can take one of 'calc' or 'given'.\n
+        'calc' makes the function split the total data into a sample for vectorisation and 
+        the rest for classification and measuring accuracy.\n
+        'given' allows the user to provide a ready made set of vectorised gestures to classify on.
+    total_readings: int
+        Is the total number of readings available for each gesture.
+    split : float
+        Decides the portion of data to be used as the set of vectorised gestures.
+    gest_list : list[Gesture] | tuple[Gesture]
+        Where the user can provide the ready set of vectorised gestures.
 
-# plot_gesture_spectrum(1, movements[0:6])
+    Returns
+    -------
+    float
+        Returns the accuracy of classification for the given data.
 
-# fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, sharey=True)
+    Examples
+    --------
+    >>> calculate_accuracy(trial=6, gestures=('rest', 'fist', 'handflexion'), total_readings=10, split=0.3)
+    0.94
 
-# test_emgo = EMG('rest0', version='old', filtered=False)
-# test_emgn = EMG('rest0', version='new', filtered=False)
-# old = test_emgo.ch0.get_fft()
-# new = test_emgn.ch0.get_fft()
+    Notes
+    -----
+    - The calculated accuracy depends only on the provided data.
+    """
 
-# ax1.plot(*old, linewidth=0.7, color='#0000FF')
-# ax1.set_title('Irregular Sampling')
-# ax1.set_ylabel('Magnitude')
+    if mode == 'calc':
+        N = int(total_readings * split)
+        gest_list = get_gesture_vectors(trial, *gestures, readings=N)
 
-# ax2.plot(*new, linewidth=0.7, color='#0000FF')
-# ax2.set_title('Regular Sampling')
-# ax2.set_xlabel('Frequency')
-# ax2.set_ylabel('Magnitude')
+    elif mode == 'given':
+        if gest_list == None:
+            raise TypeError("Must input an argument for 'gest_list' for the mode 'given'.")
+        else:
+            gest_list = [g for g in gest_list if g.name in gestures]
+    
+    else:
+        raise TypeError(f"'mode' can only take 'calc' or 'given' as arguments. '{mode}' is not a valid argument.")
 
-# plt.tight_layout()
-# plt.show()
+    correct = 0
+    total = 0
+    for g in gestures:
+        for i in range(N, total_readings):
+            try:
+                emg = EMG(f'{g}{i}', trial=trial)
+                classification = emg.classify_gesture(gest_list, normalised=True)
+                if classification == g:
+                    correct += 1
+                total += 1
+            except Exception:
+                pass
 
-# t = EMG('rest0', 'old', 1, False).ch0.t
-# plt.plot(np.diff(t), linewidth=0.7, color='b')
-# plt.xlabel('Sample Number')
-# plt.ylabel('dt')
-# plt.show()
+    return correct / total
+
+

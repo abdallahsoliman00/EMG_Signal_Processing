@@ -1,8 +1,8 @@
 import numpy as np
 
 
-movements = ["fingerextension", "fingerspread", "fist", "handextension", "handflexion", "rest", "index", "middle", "ring", "pinky"]
-repetitions = [0,1,2,3,4,'_dynamic']
+movements = ("fingerextension", "fingerspread", "fist", "handextension", "handflexion", "rest", "second", "third", "fourth", "fifth")
+repetitions = (0,1,2,3,4,'_dynamic')
 global_fs = 4700
 
 
@@ -32,13 +32,13 @@ def read_emg_data(filepath):
     return tuple(values)
 
 
-def get_emg_data(movement, new_old='new', trial=1):
-    if new_old == 'new':
+def get_emg_data(movement, version='new', trial=1):
+    if version == 'new':
         filepath = get_new_filepath(movement, trial=trial)
-    elif new_old == 'old':
+    elif version == 'old':
         filepath = get_filepath(movement, trial=trial)
     else:
-        raise KeyError("Invalid argument for 'new_old'. Please pick a valid mode: 'new' or 'old'.")
+        raise KeyError("Invalid argument for 'version'. Please pick a valid mode: 'new' or 'old'.")
     
     values = read_emg_data(filepath)
 
