@@ -1,10 +1,10 @@
 from emg_classes import *
 from emg_functions import get_new_filepath
-from emg_functions import movements, repetitions, global_fs
-from functools import cache
+from emg_functions import gestures, repetitions, global_fs, unique_gestures
+import pandas as pd
 
 
-def resample_readings(trial, fs=global_fs, print_verification=True, gestures=movements, reps=repetitions):
+def resample_readings(trial, fs=global_fs, print_verification=True, gestures=gestures, reps=repetitions):
     for m in gestures:
         for i in reps:
             new_fpath = get_new_filepath(f'{m}{i}', trial=trial)
@@ -61,8 +61,8 @@ def show_classifications(trial, gest_list):
                 pass
 
 
-def plot_gesture_spectrum(trial, gestures=movements[0:6], name=None, show=True, **kwargs):
-    gest_list = get_gesture_vectors(trial, *gestures, readings=4)
+def plot_gesture_spectrum(trial, gestures=gestures[0:6], readings=4, name=None, show=True, **kwargs):
+    gest_list = get_gesture_vectors(trial, *gestures, readings=readings)
     plt.figure(name)
     for g in gest_list:
         g.plot(show=False, label=g.name, **kwargs)
@@ -79,9 +79,39 @@ def test_gesture(testfile_name, trial, gest_list):
     print(test.classify_gesture(gest_list))
 
 
-def calculate_accuracy(trial, gestures=movements[1:6], mode='calc', total_readings=5, split=0.4, gest_list=None):
+def calculate_accuracy(trial, gestures=unique_gestures, mode='calc', total_readings=5, split=0.4, gest_list=None):
+    if mode == 'calc':
+        N = int(total_readings * split)
+        gest_list = get_gesture_vectors(trial, *gestures, readings=N)
+
+    elif mode == 'given':
+        if gest_list == None:
+            raise TypeError("Must input an argument for 'gest_list' for the mode 'given'.")
+        else:
+            N = 0
+            gest_list = [g for g in gest_list if g.name in gestures]
+    
+    else:
+        raise TypeError(f"'mode' can only take 'calc' or 'given' as arguments. '{mode}' is not a valid argument.")
+
+    correct = 0
+    total = 0
+    for g in gestures:
+        for i in range(N, total_readings):
+            try:
+                emg = EMG(f'{g}{i}', trial=trial)
+                classification = emg.classify_gesture(gest_list, normalised=True)
+                correct += (classification == g)
+                total += 1
+            except Exception:
+                pass
+
+    return correct / total
+
+
+def get_confusion_matrix(trial, gestures=unique_gestures, mode='calc', total_readings=5, split=0.4, gest_list=None):
     """
-    This function calculates the accuracy of the model for a given trial.
+    This function creates a confusion matrix and calculates the accuracy of the model for a given trial.
     It can either be given a set of vectorised gestures to classify on,
     or it will take the given data and split it.
 
@@ -105,17 +135,19 @@ def calculate_accuracy(trial, gestures=movements[1:6], mode='calc', total_readin
 
     Returns
     -------
-    float
+    pd.DataFrame, float
         Returns the accuracy of classification for the given data.
 
     Examples
     --------
     >>> calculate_accuracy(trial=6, gestures=('rest', 'fist', 'handflexion'), total_readings=10, split=0.3)
-    0.94
+    <pd.DataFrame>, 0.94
+    >>> calculate_accuracy(trial=3, gestures=('rest', 'fist', 'handflexion'), mode='given', total_readings=5, gest_list=gest_list)
+    <pd.DataFrame>, 0.82
 
     Notes
     -----
-    - The calculated accuracy depends only on the provided data.
+    - The output depends only on the provided data.
     """
 
     if mode == 'calc':
@@ -126,24 +158,37 @@ def calculate_accuracy(trial, gestures=movements[1:6], mode='calc', total_readin
         if gest_list == None:
             raise TypeError("Must input an argument for 'gest_list' for the mode 'given'.")
         else:
+            N = 0
             gest_list = [g for g in gest_list if g.name in gestures]
     
     else:
         raise TypeError(f"'mode' can only take 'calc' or 'given' as arguments. '{mode}' is not a valid argument.")
 
+    confusion_matrix = pd.DataFrame(
+    data=0,
+    index=unique_gestures,
+    columns=unique_gestures
+    )
     correct = 0
     total = 0
+    
     for g in gestures:
         for i in range(N, total_readings):
             try:
                 emg = EMG(f'{g}{i}', trial=trial)
                 classification = emg.classify_gesture(gest_list, normalised=True)
-                if classification == g:
-                    correct += 1
+                confusion_matrix.loc[g, classification] += 1
+                correct += (classification == g)
                 total += 1
             except Exception:
                 pass
 
-    return correct / total
+    return confusion_matrix, float(correct/total)
 
 
+gest_list = get_gesture_vectors(1, *unique_gestures, readings=2)
+confusion_matrix, accuracy = get_confusion_matrix(6, gestures=unique_gestures, mode='given', total_readings=10, gest_list=gest_list)
+
+print("Confusion Matrix:")
+print(confusion_matrix.to_string())
+print("Accuracy: ", accuracy)

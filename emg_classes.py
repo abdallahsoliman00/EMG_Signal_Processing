@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
@@ -5,7 +7,7 @@ import scipy.fft as sp_fft
 from scipy.interpolate import interp1d
 from emg_functions import get_emg_data, get_average, dot_product, get_dist
 from emg_functions import global_fs
-import config
+
 
 
 class Signal:
@@ -188,7 +190,7 @@ class EMG:
 
     def classify_gesture(
         self,
-        gestures : list,
+        gestures : list[Gesture],
         normalised : bool = True
     ):
 

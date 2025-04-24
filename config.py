@@ -9,3 +9,7 @@ mpl.rcParams["axes.formatter.use_mathtext"] = True # to fix the minus signs
 
 # Use \mathrm instead ot \text when working with latex equations and set 
 # mpl.rcParams['text.usetex'] = True
+
+# Configure default paths
+path_to_raw_data = "C:\\Users\\abdal\\OneDrive\\Documents\\Southampton\\Year 3\\Part III Project\\EMG_readings"
+path_to_resampled_data = "C:\\Users\\abdal\\OneDrive\\Documents\\Southampton\\Year 3\\Part III Project\\EMG_readings_rectified"

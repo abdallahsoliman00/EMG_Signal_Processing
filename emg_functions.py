@@ -1,17 +1,19 @@
 import numpy as np
+import config
 
 
-movements = ("fingerextension", "fingerspread", "fist", "handextension", "handflexion", "rest", "second", "third", "fourth", "fifth")
+gestures = ("fingerspread", "fingerextension", "fist", "handextension", "handflexion", "rest", "second", "third", "fourth", "fifth")
+unique_gestures = ("fingerextension", "fist", "handextension", "handflexion", "rest")
 repetitions = (0,1,2,3,4,'_dynamic')
 global_fs = 4700
 
 
 def get_filepath(movement, trial=1):
-    return f"C:\\Users\\abdal\\OneDrive\\Documents\\Southampton\\Year 3\\Part III Project\\EMG_readings\\Trial{trial}\\EMG_readings_{movement}.txt"
+    return f"{config.path_to_raw_data}\\Trial{trial}\\EMG_readings_{movement}.txt"
 
 
 def get_new_filepath(movement, trial=1):
-    return f"C:\\Users\\abdal\\OneDrive\\Documents\\Southampton\\Year 3\\Part III Project\\EMG_readings_rectified\\Trial{trial}\\EMG_readings_{movement}.txt"
+    return f"{config.path_to_resampled_data}\\Trial{trial}\\EMG_readings_{movement}.txt"
 
 
 def read_emg_data(filepath):
