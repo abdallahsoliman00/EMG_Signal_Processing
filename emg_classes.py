@@ -283,13 +283,23 @@ class Gesture:
     def __init__(
         self,
         name : str,
-        **kwargs
+        trial : int = 1,
+        version : str = 'new',
+        readings: int = 3, 
+        reading_indices : list[int] | tuple[int] | None = None, 
+        error_message=False
     ):
         
         self.name = name
-        self.gesture_vec = self.get_vectorised_movement(**kwargs)
+        self.gesture_vec = self.get_vectorised_movement(
+                                trial=trial,
+                                version=version,
+                                readings=readings,
+                                reading_indices=reading_indices,
+                                error_message=error_message
+                            )
 
-    def __add__(self, other):
+    def __add__(self, other : Gesture):
         self.gesture_vec = get_average(self.gesture_vec, other.gesture_vec)
         return self
     
@@ -298,20 +308,25 @@ class Gesture:
 
     def __len__(self):
         return len(self.gesture_vec)
-    
-    def plot(self, show=True, **kwargs):
-        plt.plot(self.gesture_vec, **kwargs)
-        if show:
-            plt.show()
 
-    def get_vectorised_movement(self, readings=4, version='new', trial=1, error_message=False):
+    def get_vectorised_movement(self, trial=1, version='new', readings=3, reading_indices=None, error_message=False):
+        if reading_indices == None:
+            if readings:
+                reading_indices = range(readings)
+            else: raise TypeError("You must provide a value for 'readings'.")
+
         m_vectors = []
-        for i in range(readings):
+        for i in reading_indices:
             try:
                 m_vectors.append(EMG(f'{self.name}{i}', version=version, trial=trial).vectorise_movement())
             except Exception as e:
                 if error_message:
                     print(f"Skipped {self.name}{i}. {e}")
-                break
+                if reading_indices == None:
+                    break
         return get_average(*m_vectors)
 
+    def plot(self, show=True, **kwargs):
+        plt.plot(self.gesture_vec, **kwargs)
+        if show:
+            plt.show()

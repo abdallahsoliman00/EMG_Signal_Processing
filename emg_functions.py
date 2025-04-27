@@ -1,9 +1,10 @@
 import numpy as np
 import config
+import random
 
 
-gestures = ("fingerspread", "fingerextension", "fist", "handextension", "handflexion", "rest", "second", "third", "fourth", "fifth")
-unique_gestures = ("fingerextension", "fist", "handextension", "handflexion", "rest")
+gestures = ("fingerextension", "fingerspread", "fist", "handextension", "handflexion", "rest", "second", "third", "fourth", "fifth")
+unique_gestures = ("fingerspread", "fist", "handextension", "handflexion", "rest")
 repetitions = (0,1,2,3,4,'_dynamic')
 global_fs = 4700
 
@@ -56,8 +57,8 @@ def calc_avg_fs(time):
 
 
 def get_sum(*funcs):
-    sum = np.zeros_like(funcs[0])
-    for f in funcs:
+    sum = funcs[0]
+    for f in funcs[1:]:
         sum = sum + f
     return sum
 
@@ -80,3 +81,18 @@ def dot_product(vec1, vec2, normalised=False):
     if normalised:
         vec1, vec2 = normalise(vec1), normalise(vec2)
     return np.dot(vec1, vec2)
+
+
+def random_split(lower, upper, n):
+    if upper < lower:
+        raise ValueError("Upper bound must be greater than or equal to lower bound.")
+    
+    full_range = list(range(lower, upper + 1))
+    
+    if n > len(full_range):
+        raise ValueError("n cannot be greater than the total number of integers in the range.")
+    
+    random_selection = random.sample(full_range, n)
+    remaining = [x for x in full_range if x not in random_selection]
+    
+    return random_selection, remaining

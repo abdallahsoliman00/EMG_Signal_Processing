@@ -1,5 +1,5 @@
 from emg_classes import *
-from emg_functions import get_new_filepath
+from emg_functions import get_new_filepath, random_split, get_sum
 from emg_functions import gestures, repetitions, global_fs, unique_gestures
 import pandas as pd
 
@@ -79,16 +79,17 @@ def test_gesture(testfile_name, trial, gest_list):
     print(test.classify_gesture(gest_list))
 
 
-def calculate_accuracy(trial, gestures=unique_gestures, mode='calc', total_readings=5, split=0.4, gest_list=None):
+def calculate_accuracy(trial, gestures=unique_gestures, mode='calc', total_readings=5, split=0.4, gest_list=None, error_message=False):
     if mode == 'calc':
         N = int(total_readings * split)
-        gest_list = get_gesture_vectors(trial, *gestures, readings=N)
+        vec_nums, test_nums = random_split(lower=0, upper=total_readings-1, n=N)
+        gest_list = get_gesture_vectors(trial, *gestures, reading_indices=vec_nums, error_message=error_message)
 
     elif mode == 'given':
         if gest_list == None:
             raise TypeError("Must input an argument for 'gest_list' for the mode 'given'.")
         else:
-            N = 0
+            test_nums = range(total_readings)
             gest_list = [g for g in gest_list if g.name in gestures]
     
     else:
@@ -97,7 +98,7 @@ def calculate_accuracy(trial, gestures=unique_gestures, mode='calc', total_readi
     correct = 0
     total = 0
     for g in gestures:
-        for i in range(N, total_readings):
+        for i in test_nums:
             try:
                 emg = EMG(f'{g}{i}', trial=trial)
                 classification = emg.classify_gesture(gest_list, normalised=True)
@@ -109,7 +110,7 @@ def calculate_accuracy(trial, gestures=unique_gestures, mode='calc', total_readi
     return correct / total
 
 
-def get_confusion_matrix(trial, gestures=unique_gestures, mode='calc', total_readings=5, split=0.4, gest_list=None):
+def get_confusion_matrix(trial, gestures=unique_gestures, mode='calc', total_readings=5, split=0.4, gest_list=None, error_message=False):
     """
     This function creates a confusion matrix and calculates the accuracy of the model for a given trial.
     It can either be given a set of vectorised gestures to classify on,
@@ -132,18 +133,20 @@ def get_confusion_matrix(trial, gestures=unique_gestures, mode='calc', total_rea
         Decides the portion of data to be used as the set of vectorised gestures.
     gest_list : list[Gesture] | tuple[Gesture]
         Where the user can provide the ready set of vectorised gestures.
+    error_message : bool
+        Decides whether error messages are shown when a file is not found
 
     Returns
     -------
     pd.DataFrame, float
-        Returns the accuracy of classification for the given data.
+        Returns the confusion matrix of classification for the given data.
 
     Examples
     --------
     >>> calculate_accuracy(trial=6, gestures=('rest', 'fist', 'handflexion'), total_readings=10, split=0.3)
-    <pd.DataFrame>, 0.94
+    <pd.DataFrame>
     >>> calculate_accuracy(trial=3, gestures=('rest', 'fist', 'handflexion'), mode='given', total_readings=5, gest_list=gest_list)
-    <pd.DataFrame>, 0.82
+    <pd.DataFrame>
 
     Notes
     -----
@@ -152,13 +155,14 @@ def get_confusion_matrix(trial, gestures=unique_gestures, mode='calc', total_rea
 
     if mode == 'calc':
         N = int(total_readings * split)
-        gest_list = get_gesture_vectors(trial, *gestures, readings=N)
+        vec_nums, test_nums = random_split(lower=0, upper=total_readings-1, n=N)
+        gest_list = get_gesture_vectors(trial, *gestures, reading_indices=vec_nums, error_message=error_message)
 
     elif mode == 'given':
         if gest_list == None:
             raise TypeError("Must input an argument for 'gest_list' for the mode 'given'.")
         else:
-            N = 0
+            test_nums = range(total_readings)
             gest_list = [g for g in gest_list if g.name in gestures]
     
     else:
@@ -166,29 +170,40 @@ def get_confusion_matrix(trial, gestures=unique_gestures, mode='calc', total_rea
 
     confusion_matrix = pd.DataFrame(
     data=0,
-    index=unique_gestures,
-    columns=unique_gestures
+    index=gestures,
+    columns=gestures
     )
-    correct = 0
-    total = 0
     
     for g in gestures:
-        for i in range(N, total_readings):
+        for i in test_nums:
             try:
                 emg = EMG(f'{g}{i}', trial=trial)
                 classification = emg.classify_gesture(gest_list, normalised=True)
                 confusion_matrix.loc[g, classification] += 1
-                correct += (classification == g)
-                total += 1
-            except Exception:
-                pass
+            except Exception as e:
+                if error_message:
+                    print(e)
 
-    return confusion_matrix, float(correct/total)
+    return confusion_matrix
+
+def accuracy_from_confusion_matrix(cm : pd.DataFrame):
+    correct = cm.values.diagonal().sum()
+    total = cm.values.sum()
+    accuracy = correct / total if total > 0 else 0
+    return accuracy
 
 
-gest_list = get_gesture_vectors(1, *unique_gestures, readings=2)
-confusion_matrix, accuracy = get_confusion_matrix(6, gestures=unique_gestures, mode='given', total_readings=10, gest_list=gest_list)
+def show_confusion_matrix(N):
+    cm_arr = []
+    for i in range(2,7):
+        try:
+            cm = get_confusion_matrix(i, gestures=unique_gestures, total_readings=5, split=N/5)
+            cm_arr.append(cm)
+        except Exception:
+            pass
 
-print("Confusion Matrix:")
-print(confusion_matrix.to_string())
-print("Accuracy: ", accuracy)
+    result = get_sum(*cm_arr)
+    print("\nOverall CM:")
+    print(result.to_string())
+    print("\nAverage Accuracy: ", accuracy_from_confusion_matrix(result))
+
