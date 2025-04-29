@@ -14,8 +14,8 @@ class Signal:
 
     def __init__(
         self,
-        t : np.ndarray | list[float],
-        val: np.ndarray | list[float]
+        t : np.ndarray | list[float] | tuple[float],
+        val: np.ndarray | list[float] | tuple[float]
     ):
 
         if len(t) != len(val):
@@ -190,7 +190,7 @@ class EMG:
 
     def classify_gesture(
         self,
-        gestures : list[Gesture],
+        gestures : list[Gesture] | tuple[Gesture],
         normalised : bool = True
     ):
 

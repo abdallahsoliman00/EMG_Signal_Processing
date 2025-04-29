@@ -5,6 +5,7 @@ import pandas as pd
 
 
 def resample_readings(trial, fs=global_fs, print_verification=True, gestures=gestures, reps=repetitions):
+    """Resamples all raw EMG data and saves it to a new path."""
     for m in gestures:
         for i in reps:
             new_fpath = get_new_filepath(f'{m}{i}', trial=trial)
@@ -27,6 +28,8 @@ def resample_readings(trial, fs=global_fs, print_verification=True, gestures=ges
 
 
 def get_gesture_vectors(trial, *gestures, **kwargs):
+    """Creates the set of reference vectors for the given gesture names.
+    The number of basis vectors and the specific measurements to use can also be specified"""
     return [Gesture(g, trial=trial, **kwargs) for g in gestures]
 
 
@@ -50,10 +53,11 @@ def test_movement_and_plot(movement, trial, gest_vec, normalise=True):
     plt.show()
 
 
-def show_classifications(trial, gest_list):
+def show_classifications(trial, gest_list, num_readings=5):
+    """Prints all classifications for a given trial using a given set of reference vectors."""
     gestures = [g.name for g in gest_list]
     for g in gestures:
-        for i in range(5):
+        for i in range(num_readings):
             try:
                 emg = EMG(f'{g}{i}', trial=trial)
                 print(f"Classified {g}{i} as {emg.classify_gesture(gest_list, normalised=True)}.")
@@ -73,6 +77,31 @@ def plot_gesture_spectrum(trial, gestures=gestures[0:6], readings=4, name=None, 
 
 
 def test_gesture(testfile_name, trial, gest_list):
+    """
+    Classifies a test gesture given a set of reference vectors.
+    
+    Parameters
+    ----------
+    testfile_name : str
+        Name of test gesture
+    trial : int
+        Trial number or test index
+    gest_list : list[Gesture] | tuple[Gesture]
+        Set of reference vectors
+
+    Returns
+    -------
+    None
+        Prints the name of the gesture the test was classified as.
+
+    Examples
+    --------
+    >>> gest_list = get_gesture_vectors(trial=1, gestures=('rest', 'fist', 'handflexion'), readings=3)
+    >>> test_gesture('rest2', 1, gest_list)
+    rest
+
+    """
+
     test = EMG(testfile_name, trial=trial, version='old')
     test = test.resample_EMG()
 
@@ -80,6 +109,50 @@ def test_gesture(testfile_name, trial, gest_list):
 
 
 def calculate_accuracy(trial, gestures=unique_gestures, mode='calc', total_readings=5, split=0.4, gest_list=None, error_message=False):
+    """
+    This function creates a confusion matrix and calculates the accuracy of the model for a given trial.
+    It can either be given a set of vectorised gestures to classify on,
+    or it will take the given data and split it.
+
+    Parameters
+    ----------
+    trial : int
+        Trial number.
+    gestures : list[str]
+        List of names of gestures to be classified.
+    mode : str
+        Mode of classification. Can take one of 'calc' or 'given'.\n
+        'calc' makes the function split the total data into a sample for vectorisation and 
+        the rest for classification and measuring accuracy.\n
+        'given' allows the user to provide a ready made set of vectorised gestures to classify on.
+    total_readings: int
+        Is the total number of readings available for each gesture.
+    split : float
+        Decides the portion of data to be used as the set of vectorised gestures.
+    gest_list : list[Gesture] | tuple[Gesture] | None
+        Where the user can provide the ready set of vectorised gestures.
+    error_message : bool
+        Decides whether error messages are shown when a file is not found
+
+    Returns
+    -------
+    float
+        Returns the accuracy of classification for the given data.
+
+    Examples
+    --------
+    >>> calculate_accuracy(trial=6, gestures=('rest', 'fist', 'handflexion'), total_readings=10, split=0.3)
+    0.95
+
+    >>> gest_list = get_gesture_vectors(trial=3, gestures=('rest', 'fist', 'handflexion'), readings=3)
+    >>> calculate_accuracy(trial=3, gestures=('rest', 'fist', 'handflexion'), mode='given', total_readings=5, gest_list=gest_list)
+    0.87
+
+    Notes
+    -----
+    - The output depends only on the provided data.
+    """
+
     if mode == 'calc':
         N = int(total_readings * split)
         vec_nums, test_nums = random_split(lower=0, upper=total_readings-1, n=N)
@@ -138,7 +211,7 @@ def get_confusion_matrix(trial, gestures=unique_gestures, mode='calc', total_rea
 
     Returns
     -------
-    pd.DataFrame, float
+    pd.DataFrame
         Returns the confusion matrix of classification for the given data.
 
     Examples
@@ -186,7 +259,9 @@ def get_confusion_matrix(trial, gestures=unique_gestures, mode='calc', total_rea
 
     return confusion_matrix
 
+
 def accuracy_from_confusion_matrix(cm : pd.DataFrame):
+    """Takes in a confusion matrix and outputs the accuracy of classification."""
     correct = cm.values.diagonal().sum()
     total = cm.values.sum()
     accuracy = correct / total if total > 0 else 0
@@ -194,6 +269,7 @@ def accuracy_from_confusion_matrix(cm : pd.DataFrame):
 
 
 def show_confusion_matrix(N):
+    """Shows the confusion matrix for N/5 samples for each participant."""
     cm_arr = []
     for i in range(2,7):
         try:
