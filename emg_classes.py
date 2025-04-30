@@ -110,6 +110,7 @@ class Signal:
         x_new = interpolator(t_new)
 
         self.t, self.val = t_new, x_new
+        return self
 
 
     def get_fft(self, spectrum='half', f_range=(0,np.inf), mode='abs', inc_dc=True):
@@ -148,44 +149,40 @@ class EMG:
 
     def __init__(
         self,
-        movement : str,
+        gesture : str,
         trial : int = 1,
         version : str = 'new',
         filtered : bool = True
     ):
-        self.movement = movement
-        t, ch0, ch1 = get_emg_data(movement, version=version, trial=trial)
+        self.gesture = gesture
+        t, *ch = get_emg_data(gesture, version=version, trial=trial)
 
-        self.ch0 = Signal(t, ch0)
-        self.ch1 = Signal(t, ch1)
+        self.channels : list[Signal] = [Signal(t, c) for c in ch]
+        self.num_channels = len(self.channels)
 
         if filtered:
             self.filter_EMG()
 
 
     def filter_EMG(self, **kwargs):
-        self.ch0 = self.ch0.comb_filter(**kwargs).low_pass_filter(500)
-        self.ch1 = self.ch1.comb_filter(**kwargs).low_pass_filter(500)
+        self.channels = [c.comb_filter(**kwargs).low_pass_filter(500) for c in self.channels]
         return self
 
 
     def __array__(self):
-        t, emg0 = self.ch0.__array__()
-        t, emg1 = self.ch1.__array__()
-        return np.array((t, emg0, emg1))
+        emg_sigs = [s.val for s in self.channels]
+        return np.array((self.channels[0].t, *emg_sigs))
 
 
     def resample_EMG(self, fs=global_fs):
-        self.ch0.resample_signal(fs=fs)
-        self.ch1.resample_signal(fs=fs)
+        self.channels = [c.resample_signal(fs=fs) for c in self.channels]
         return self
 
 
-    def vectorise_movement(self, f_range=(0,500)):
-        """Turns each movement into a vector in the frequency domain"""
-        _, fft0 = self.ch0.get_fft(spectrum='half', mode='abs', f_range=f_range)
-        _, fft1 = self.ch1.get_fft(spectrum='half', mode='abs', f_range=f_range)
-        return np.concatenate((fft0, fft1))
+    def vectorise_gesture(self, f_range=(0,500)):
+        """Turns each gesture into a vector in the frequency domain"""
+        ffts = [c.get_fft(spectrum='half', mode='abs', f_range=f_range)[1] for c in self.channels]
+        return np.concatenate((ffts))
     
 
     def classify_gesture(
@@ -194,7 +191,7 @@ class EMG:
         normalised : bool = True
     ):
 
-        test = self.vectorise_movement()
+        test = self.vectorise_gesture()
 
         dot_products = []
         euclidean_distances = []
@@ -216,17 +213,12 @@ class EMG:
 
     def plot_channels(self, show=True):
 
-        plt.subplot(2,1,1)
-        plt.plot(*self.ch0, linewidth=0.7)
-        plt.title(f"{self.movement} Ch0")
-        plt.xlabel("Time (s)")
-        plt.ylabel("EMG(t)")
-
-        plt.subplot(2,1,2)
-        plt.plot(*self.ch1, linewidth=0.7)
-        plt.title(f"{self.movement} Ch1")
-        plt.xlabel("Time (s)")
-        plt.ylabel("EMG(t)")
+        for i in range(1, self.num_channels+1):
+            plt.subplot(self.num_channels,1,i)
+            plt.plot(*self.channels[i-1], linewidth=0.7)
+            plt.title(f"{self.gesture} Ch{i-1}")
+            plt.xlabel("Time (s)")
+            plt.ylabel("EMG(t)")
 
         plt.tight_layout()
         if show:
@@ -234,43 +226,31 @@ class EMG:
 
 
     def plot_channel(self, channel, **kwargs):
-        if channel == 0:
-            self.ch0.plot(**kwargs)
-        elif channel == 1:
-            self.ch1.plot(**kwargs)
-        else:
-            raise ValueError(f"Pick a channel number 0 or 1. Channel number {channel} not available.")
+        try:    
+            self.channels[channel].plot(**kwargs)
+        except Exception:
+            raise ValueError(f"Pick a valid channel number from 0 to {self.num_channels}. Channel {channel} not available.")
 
 
     def plot_channels_and_ffts(self, show=True):
 
-        plt.subplot(2,2,1)
-        plt.plot(*self.ch0, linewidth=0.7)
-        plt.title(f"{self.movement} Ch0")
-        plt.xlabel("Time (s)")
-        plt.ylabel("EMG(t)")
+        for i in range(1, self.num_channels+1):
+            plt.subplot(2,self.num_channels,i)
+            plt.plot(*self.channels[i-1], linewidth=0.7)
+            plt.title(f"{self.gesture} Ch{i-1}")
+            plt.xlabel("Time (s)")
+            plt.ylabel("EMG(t)")
 
-        plt.subplot(2,2,2)
-        plt.plot(*self.ch1, linewidth=0.7)
-        plt.title(f"{self.movement} Ch1")
-        plt.xlabel("Time (s)")
-        plt.ylabel("EMG(t)")
-
-        plt.subplot(2,2,3)
-        plt.plot(*self.ch0.get_fft(), linewidth=0.7)
-        plt.title("Ch0 FFT")
-        plt.xlabel("Frequency")
-        plt.ylabel("Magnitude")
-
-        plt.subplot(2,2,4)
-        plt.plot(*self.ch1.get_fft(), linewidth=0.7)
-        plt.title("Ch1 FFT")
-        plt.xlabel("Frequency")
-        plt.ylabel("Magnitude")
+            plt.subplot(2,self.num_channels,i+self.num_channels)
+            plt.plot(*self.channels[i-1].get_fft(), linewidth=0.7)
+            plt.title(f"Ch{i-1} FFT")
+            plt.xlabel("Frequency")
+            plt.ylabel("Magnitude")
 
         plt.tight_layout()
         if show:
             plt.show()
+
 
     def show_new_EMG(self):
         self.resample_EMG().filter_EMG().plot_channels()
@@ -291,7 +271,7 @@ class Gesture:
     ):
         
         self.name = name
-        self.gesture_vec = self.get_vectorised_movement(
+        self.gesture_vec = self.get_vectorised_gesture(
                                 trial=trial,
                                 version=version,
                                 readings=readings,
@@ -309,7 +289,7 @@ class Gesture:
     def __len__(self):
         return len(self.gesture_vec)
 
-    def get_vectorised_movement(self, trial=1, version='new', readings=3, reading_indices=None, error_message=False):
+    def get_vectorised_gesture(self, trial=1, version='new', readings=3, reading_indices=None, error_message=False):
         if reading_indices == None:
             if readings:
                 reading_indices = range(readings)
@@ -318,7 +298,7 @@ class Gesture:
         m_vectors = []
         for i in reading_indices:
             try:
-                m_vectors.append(EMG(f'{self.name}{i}', version=version, trial=trial).vectorise_movement())
+                m_vectors.append(EMG(f'{self.name}{i}', version=version, trial=trial).vectorise_gesture())
             except Exception as e:
                 if error_message:
                     print(f"Skipped {self.name}{i}. {e}")

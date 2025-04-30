@@ -1,28 +1,31 @@
 from emg_classes import *
-from emg_functions import get_new_filepath, random_split, get_sum
-from emg_functions import gestures, repetitions, global_fs, unique_gestures
+from emg_functions import get_new_filepath, random_split, get_sum, list_files_in_directory
+from emg_functions import gestures, global_fs, unique_gestures
+from config import path_to_raw_data
 import pandas as pd
 
 
-def resample_readings(trial, fs=global_fs, print_verification=True, gestures=gestures, reps=repetitions):
+def resample_readings(trial, fs=global_fs, print_verification=True):
     """Resamples all raw EMG data and saves it to a new path."""
-    for m in gestures:
-        for i in reps:
-            new_fpath = get_new_filepath(f'{m}{i}', trial=trial)
+    filenames = list_files_in_directory(f"{path_to_raw_data}\\Trial{trial}")
+    for f in filenames:
+        fname = f.removeprefix('EMG_readings_').removesuffix('.txt')
+        new_fpath = get_new_filepath(fname, trial=trial)
 
-            try:
-                emg = EMG(f'{m}{i}', version='old', trial=trial, filtered=False)
-                emg.resample_EMG(fs=fs)
-                data = emg.__array__().T
+        try:
+            emg = EMG(fname, version='old', trial=trial, filtered=False)
+            emg.resample_EMG(fs=fs)
+            data = emg.__array__().T
 
-                with open(new_fpath, 'w') as file:
-                    for t, e0, e1 in data:
-                        file.write(f'{t} {e0} {e1}\n')
-                    if print_verification:
-                        print(f"File contents successfully written to {new_fpath}")
-            
-            except Exception as e:
-                print(f"Skipping {m}{i}\n (Testing): {str(e)}\n")
+            with open(new_fpath, 'w') as file:
+                for row in data:
+                    line = ' '.join(str(item) for item in row)
+                    file.write(line + '\n')
+                if print_verification:
+                    print(f"File contents successfully written to {new_fpath}")
+        
+        except Exception as e:
+            print(f"Error encountered: {str(e)}\n")
 
     print("\nResampling complete.")
 
@@ -33,9 +36,9 @@ def get_gesture_vectors(trial, *gestures, **kwargs):
     return [Gesture(g, trial=trial, **kwargs) for g in gestures]
 
 
-def test_movement_and_plot(movement, trial, gest_vec, normalise=True):
+def test_gesture_and_plot(gesture, trial, gest_vec, normalise=True):
 
-    test_emg = EMG(movement, version='old', trial=trial, filtered=False)
+    test_emg = EMG(gesture, version='old', trial=trial, filtered=False)
     test_emg.resample_EMG()
     test_emg.filter_EMG()
 
@@ -48,7 +51,7 @@ def test_movement_and_plot(movement, trial, gest_vec, normalise=True):
 
     print(result)
     plt.plot(other_vec, label=f'{result}', linewidth=0.7)
-    plt.plot(test_emg.vectorise_movement(), label='test', linewidth=0.7)
+    plt.plot(test_emg.vectorise_gesture(), label='test', linewidth=0.7)
     plt.legend()
     plt.show()
 

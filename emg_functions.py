@@ -1,6 +1,7 @@
 import numpy as np
 import config
 import random
+import os
 
 
 gestures = ("fingerextension", "fingerspread", "fist", "handextension", "handflexion", "rest", "second", "third", "fourth", "fifth")
@@ -15,6 +16,21 @@ def get_filepath(movement, trial=1):
 
 def get_new_filepath(movement, trial=1):
     return f"{config.path_to_resampled_data}\\Trial{trial}\\EMG_readings_{movement}.txt"
+
+
+def list_files_in_directory(directory_path) -> list[str]:
+    try:
+        all_entries = os.listdir(directory_path)
+        
+        files = [f for f in all_entries if os.path.isfile(os.path.join(directory_path, f))]
+        
+        return files
+    except FileNotFoundError:
+        print(f"The directory {directory_path} does not exist.")
+        return []
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return []
 
 
 def read_emg_data(filepath):
@@ -43,9 +59,7 @@ def get_emg_data(movement, version='new', trial=1):
     else:
         raise KeyError("Invalid argument for 'version'. Please pick a valid mode: 'new' or 'old'.")
     
-    values = read_emg_data(filepath)
-
-    return values
+    return read_emg_data(filepath)
 
 
 def calc_avg_dt(time):
