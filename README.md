@@ -10,7 +10,7 @@ You will need to install some dependencies for the code to run. These can be ins
 pip install -r requirements.txt
 ```
 
-## Data storage convention
+## EMG Data Storage
 
 * All files containing EMG data must be saved in a file with the naming convention: 
     ```
@@ -27,5 +27,5 @@ EMG data is provided in the files "EMG_readings" and "EMG_readings_rectified".
 ## Examples
 Some code examples can be found in examples.py
 
-Notes:
+## Notes
 * For all functions to work properly, all signals must be resampled to have the same sampling frequency.
