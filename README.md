@@ -19,13 +19,22 @@ pip install -r requirements.txt
 
 * There must be two separate paths for data storage. One for raw data, and one for the resampled data.
   Both raw and resampled data files have identical names (using the above convention), but are stored in separate folders.
-  The paths in config.py must be changed.
+  The paths in ``config.py`` must be changed.
 
 ## Data
-EMG data is provided in the files "EMG_readings" and "EMG_readings_rectified".
+EMG data can be found in the [EMG Gesture Classification Dataset](https://github.com/abdallahsoliman00/EMG_dataset).
+
+Whatever data is used, it must be formatted as such:
+```
+<timestamp> <emg_channel_1> <emg_channel_2>
+0 0.012 0.014
+0.0002 0.013 0.013
+```
 
 ## Examples
-Some code examples can be found in examples.py
+Some code examples on how to use the library can be found in ``examples.py``.
+
+EMG signal processing using the library can be found in ``emg_processing.py``.
 
 ## Notes
 * For all functions to work properly, all signals must be resampled to have the same sampling frequency.

@@ -1,4 +1,4 @@
-from emg_classes import *
+from emglib.emg_classes import *
 
 # Define gesture names
 gestures = ("fingerspread", "fist", "handextension", "handflexion", "rest")
@@ -34,4 +34,4 @@ test_gesture = EMG('fist4', trial=6)
 print(test_gesture.classify_gesture([rest_ref, fist_ref]))
 
 
-"""More code can be found in emg_processiing.py"""
+"""More signal proessing can be found in emg_processiing.py"""

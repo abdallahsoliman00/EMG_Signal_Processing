@@ -1,7 +1,7 @@
-from emg_classes import *
-from emg_functions import get_new_filepath, random_split, get_sum, list_files_in_directory
-from emg_functions import gestures, global_fs, unique_gestures
-from config import path_to_raw_data
+from emglib.emg_classes import *
+from emglib.emg_functions import get_new_filepath, random_split, get_sum, list_files_in_directory
+from emglib.emg_functions import gestures, global_fs, unique_gestures
+from emglib.config import path_to_raw_data
 import pandas as pd
 
 
