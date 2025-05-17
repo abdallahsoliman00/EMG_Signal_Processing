@@ -21,7 +21,7 @@ class Signal:
         if len(t) != len(val):
             raise ValueError("Both input arrays must be of the same size.")
         
-        self.t = np.array(t)
+        self.t = t if isinstance(t, np.ndarray) else np.array(t)
         self.val = np.array(val)
     
 
@@ -156,6 +156,7 @@ class EMG:
     ):
         self.gesture = gesture
         t, *ch = get_emg_data(gesture, version=version, trial=trial)
+        t = np.asarray(t)
 
         self.channels : list[Signal] = [Signal(t, c) for c in ch]
         self.num_channels = len(self.channels)
@@ -164,8 +165,8 @@ class EMG:
             self.filter_EMG()
 
 
-    def filter_EMG(self, **kwargs):
-        self.channels = [c.comb_filter(**kwargs).low_pass_filter(500) for c in self.channels]
+    def filter_EMG(self, lpf_freq=500, **kwargs):
+        self.channels = [c.comb_filter(**kwargs).low_pass_filter(lpf_freq) for c in self.channels]
         return self
 
 
