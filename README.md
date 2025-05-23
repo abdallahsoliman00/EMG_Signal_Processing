@@ -26,9 +26,9 @@ EMG data can be found in the [EMG Gesture Classification Dataset](https://github
 
 Whatever data is used, it must be formatted as such:
 ```
-<timestamp> <emg_channel_1> <emg_channel_2>
-0 0.012 0.014
-0.0002 0.013 0.013
+<timestamp> <emg_channel_1> <emg_channel_2> ... <emg_channel_n>
+0 0.012 0.014 ... 0.025
+0.0002 0.013 0.013 ... 0.005
 ```
 
 ## Examples
