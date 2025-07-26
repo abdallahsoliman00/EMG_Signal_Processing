@@ -2,6 +2,8 @@
 
 This repository contains the code for the EMG processing library.
 
+The library is contained within _**emglib**_. The library makes EMG extraction and processing easier by using the custom `EMG`, `Signal` and `Gesture` classes. The acyual processing should be bespokely implemented for the appllication. (See emg_processing.py)
+
 ## Getting started
 
 You will need to install some dependencies for the code to run. These can be installed by running:
